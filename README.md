@@ -6,9 +6,6 @@ Repository with working ESLint, VSCode and Prettier configuration, prebundled wi
 -   Prettier support
 -   TypeScript
 -   `ts-node`
--   PM2
-
-> **Warning:** PM2 is really glitchy on Windows - I do not recommend using it in a Windows-based development environment.
 
 ## Scripts
 
@@ -34,15 +31,3 @@ $ tsc --project ./ && eslint ./src/**/*.*
 
 -   Starts the TypeScript compiler in watch mode.
 -   Useful if you wish to actively compile your code for type-checking purposes, without having to run it.
-
-### yarn dev
-
--   Starts the PM2 dameon, which in turn starts the TypeScript compiler, and node processes.
--   With every incremental compilation performed by the compiler, PM2 will detect file changes and restart your scripts.
-
-```bash
-$ tsc && pm2 start ecosystem.config.js && pm2 logs
-# PM2 output
-# ...
-# Compiler output/script logs
-```
