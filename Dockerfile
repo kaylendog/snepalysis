@@ -22,4 +22,4 @@ COPY yarn.lock .
 RUN yarn --prod
 COPY --from=build /build/dist dist
 
-RUN yarn prod
+ENTRYPOINT yarn prod
