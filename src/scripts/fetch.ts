@@ -1,5 +1,11 @@
 import parse from 'csv-parse';
-import { createReadStream, existsSync, readdirSync, rmdirSync } from 'fs';
+import {
+  createReadStream,
+  existsSync,
+  readdirSync,
+  rmdirSync,
+  mkdirSync,
+} from 'fs';
 import * as path from 'path';
 import gitP, { SimpleGit } from 'simple-git/promise';
 
@@ -11,17 +17,34 @@ import { RecordParser, RecordType } from '../utils/csv';
 const DIRECTORY = path.resolve(process.cwd(), './.cache');
 
 /**
- * THe URL of the data repository.
- */
-const REPOSITORY_URL = 'https://github.com/CSSEGISandData/COVID-19.git';
-
-/**
  * The path to the data directory of the repository.
  */
 const DATA_PATH = path.resolve(
   DIRECTORY,
   'csse_covid_19_data/csse_covid_19_daily_reports'
 );
+
+if (process.argv.includes('-f')) {
+  console.log('warn: -f argument specified - will update');
+}
+
+/**
+ * Git doesn't allow cloning if the path you're trying to clone to already exists. This check below,
+ * and the next one, determine whether:
+ *  a) The repository is alreay cloned locally
+ *  b) The directory exists, but is empty.
+ */
+
+if (existsSync(DIRECTORY) && !existsSync(path.resolve(DIRECTORY, '.git'))) {
+  rmdirSync(DIRECTORY);
+} else if (!existsSync(DIRECTORY)) {
+  mkdirSync(DIRECTORY);
+}
+
+/**
+ * THe URL of the data repository.
+ */
+const REPOSITORY_URL = 'https://github.com/CSSEGISandData/COVID-19.git';
 
 /**
  * git wrapper
@@ -37,8 +60,8 @@ const git: SimpleGit = gitP(DIRECTORY).outputHandler(
  * Valid record types currently used.
  */
 const RECORD_TYPES = RecordType.fromHeaders([
-  //  'Province/State, Country/Region, Last Update, Confirmed, Deaths, Recovered',
-  //  'Province/State, Country/Region, Last Update, Confirmed, Deaths, Recovered, Latitude, Longitude',
+  //'Province/State, Country/Region, Last Update, Confirmed, Deaths, Recovered',
+  'Province/State, Country/Region, Last Update, Confirmed, Deaths, Recovered, Latitude, Longitude',
   'FIPS, Admin2, Province_State, Country_Region, Last_Update, Lat, Long_, Confirmed, Deaths, Recovered, Active, Combined_Key',
 ]);
 
@@ -46,19 +69,8 @@ const RECORD_TYPES = RecordType.fromHeaders([
  * Clone the remote repository.
  */
 const cloneRepository = async (): Promise<void> => {
-  /**
-   * Git doesn't allow cloning if the path you're trying to clone to already exists. This check below,
-   * and the next one, determine whether:
-   *  a) The repository is alreay cloned locally
-   *  b) The directory exists, but is empty.
-   */
-
-  if (existsSync(DIRECTORY) || existsSync(path.resolve(DIRECTORY, './.git'))) {
+  if (existsSync(path.resolve(DIRECTORY, './.git'))) {
     return console.log('info: Skipping cloning repository - already exists.');
-  }
-
-  if (existsSync(DIRECTORY)) {
-    rmdirSync(DIRECTORY);
   }
 
   console.log('info: Cloning repository');
@@ -70,9 +82,13 @@ const cloneRepository = async (): Promise<void> => {
 /**
  * Pulls any updates made to the repository on the remote to the local.
  */
-const updateRepository = async (): Promise<void> => {
+const updateRepository = async (): Promise<boolean> => {
   console.log('info: Checking for updates');
-  await git.pull('origin', 'master', ['-f']);
+  const stats = await git.pull('origin', 'master', ['-f']);
+  if (stats.summary.changes == 0) {
+    return false;
+  }
+  return true;
 };
 
 /**
@@ -82,6 +98,7 @@ const readRepository = async (): Promise<void> => {
   const files = readdirSync(DATA_PATH);
 
   let accumulator = 0;
+  let skippedFiles = 0;
 
   // Iterate over each file, reading it and converting it to something JS can work with
   const workers = files.map(async (file, i) => {
@@ -116,10 +133,7 @@ const readRepository = async (): Promise<void> => {
         type = RECORD_TYPES.find((v) => v.header == header);
 
         if (!type) {
-          console.warn(
-            `warn: Column names in file '${file}' not recognised - skipping`
-          );
-          return;
+          return skippedFiles++;
         }
       }
 
@@ -131,11 +145,16 @@ const readRepository = async (): Promise<void> => {
   });
 
   await Promise.all(workers);
+
+  console.log(`warn: Skipped ${skippedFiles} files with invalid column names.`);
   console.log(`info: Done - got ${accumulator} records.`);
 };
 
 (async (): Promise<void> => {
   await cloneRepository();
-  await updateRepository();
-  await readRepository();
+  const shouldUpdate = await updateRepository();
+  if (shouldUpdate || process.argv.includes('-f')) {
+    await readRepository();
+  }
+  console.log('info: Not updating database - repo is fine');
 })();

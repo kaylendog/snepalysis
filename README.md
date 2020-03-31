@@ -1,16 +1,16 @@
-# eslint-config
+# snepalysis
 
-Template repository with configuration for eslint, prettier & vscode.
+COVID-19 analysis API using JHU data.
 
 ## Scripts
 
 ### yarn lint
 
--   Runs the linter on all files in the `src` directory.
+- Runs the linter on all files in the `src` directory.
 
 ### yarn build
 
--   Compiles the source TypeScript code, and lints the source.
+- Compiles the source TypeScript code, and lints the source.
 
 ```bash
 $ tsc --project ./ && eslint ./src/**/*.*
@@ -21,4 +21,4 @@ $ tsc --project ./ && eslint ./src/**/*.*
 
 ### yarn build:watch
 
--   Starts the TypeScript compiler in watch mode.
+- Starts the TypeScript compiler in watch mode.
