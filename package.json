@@ -4,10 +4,11 @@
   "license": "MIT",
   "scripts": {
     "start": "ts-node src",
+    "prod": "node dist",
     "build:watch": "tsc --project ./tsconfig.json --watch",
     "build": "tsc --project ./tsconfig.json && eslint src/**/*.*",
     "lint": "eslint src/**/*.*",
-    "download": "ts-node src/tools/fetch"
+    "fetch": "ts-node src/tools/fetch"
   },
   "devDependencies": {
     "@types/node": "^13.9.8",
