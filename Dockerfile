@@ -13,7 +13,7 @@ FROM node:alpine
 WORKDIR /snepalysis
 
 # OS dependancies
-RUN apk install git
+RUN apk add git
 
 # Code dependancies
 COPY package.json .
