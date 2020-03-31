@@ -20,6 +20,6 @@ COPY package.json .
 COPY yarn.lock .
 
 RUN yarn --prod
-COPY --from=build /build/dist .
+COPY --from=build /build/dist dist
 
 RUN yarn prod
