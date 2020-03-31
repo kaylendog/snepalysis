@@ -1,24 +1,16 @@
-# eslint-template
+# eslint-config
 
-Repository with working ESLint, VSCode and Prettier configuration, prebundled with:
-
--   ESLint
--   Prettier support
--   TypeScript
--   `ts-node`
+Template repository with configuration for eslint, prettier & vscode.
 
 ## Scripts
 
-`eslint-config` comes with a few built-in scripts to help you get started with the development process.
-
 ### yarn lint
 
--   Runs ESLint on all files in the `src` directory. Changing this will change where ESLint looks for files to lint.
+-   Runs the linter on all files in the `src` directory.
 
 ### yarn build
 
--   Simultaneously runs the TypeScript compiler and lints your code at the same time.
--   Compiled TypeScript gets sent into the `dist` directory as specified in `tsconfig.json`.
+-   Compiles the source TypeScript code, and lints the source.
 
 ```bash
 $ tsc --project ./ && eslint ./src/**/*.*
@@ -30,4 +22,3 @@ $ tsc --project ./ && eslint ./src/**/*.*
 ### yarn build:watch
 
 -   Starts the TypeScript compiler in watch mode.
--   Useful if you wish to actively compile your code for type-checking purposes, without having to run it.
