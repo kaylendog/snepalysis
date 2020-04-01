@@ -2,7 +2,8 @@
  * Utils relating to the handling of CSV data.
  */
 
-import { Entry } from '../models/Entry';
+import { Entry } from '../../models/Entry';
+import { COUNTRY, STATE } from './env';
 
 /**
  * A class for dealing with how records should be parsed, given the columns of the table.
@@ -111,3 +112,33 @@ export class RecordType {
     };
   }
 }
+
+/**
+ * Valid record types currently used.
+ */
+export const RECORD_TYPES = [
+  // Old header types
+  RecordType.from(
+    'Province/State, Country/Region, Last Update, Confirmed, Deaths, Recovered, Latitude, Longitude'
+  )
+    .columns({
+      country: 'Country/Region',
+      lat: 'Latitude',
+      long: 'Longitude',
+      state: 'Province/State',
+    })
+    .filter('country', (v) => (COUNTRY === 'any' ? true : v === COUNTRY))
+    .filter('state', (v) => (STATE === 'any' ? true : v === STATE)),
+  // New header types
+  RecordType.from(
+    'FIPS, Admin2, Province_State, Country_Region, Last_Update, Lat, Long_, Confirmed, Deaths, Recovered, Active, Combined_Key'
+  )
+    .columns({
+      country: 'Country_Region',
+      lat: 'Lat',
+      long: 'Long_',
+      state: 'Province_State',
+    })
+    .filter('country', (v) => (COUNTRY === 'any' ? true : v === COUNTRY))
+    .filter('state', (v) => (STATE === 'any' ? true : v === STATE)),
+];
