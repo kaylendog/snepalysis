@@ -2,9 +2,10 @@ import parse from 'csv-parse';
 import { createReadStream, readdirSync } from 'fs';
 import * as path from 'path';
 
-import { Entry } from '../../../models/Entry';
-import { DATA_PATH } from '../env';
+import { Entry } from '@snepalysis/shared';
+
 import { RECORD_TYPES, RecordType } from '../csv';
+import { DATA_PATH } from '../env';
 
 /**
  * Read the .csv files in the repository.
@@ -17,7 +18,7 @@ export const readRepository = async (): Promise<Entry[]> => {
   let totalRecords = 0;
 
   // Iterate over each file, reading it and converting it to something JS can work with
-  const workers = files.map(async (file, i) => {
+  const workers = files.map(async (file) => {
     // Skip non-csv files
     if (!file.endsWith('.csv')) {
       return;

@@ -1,3 +1,20 @@
+import { existsSync, rmdirSync, mkdirSync } from 'fs';
+import { DIRECTORY } from './env';
+import * as path from 'path';
+
+if (existsSync(DIRECTORY) && !existsSync(path.resolve(DIRECTORY, '.git'))) {
+  /**
+   * Git doesn't allow cloning if the path you're trying to clone to already exists. This check below,
+   * and the next one, determine whether:
+   *  a) The repository is alreay cloned locally
+   *  b) The directory exists, but is empty.
+   */
+
+  rmdirSync(DIRECTORY);
+} else if (!existsSync(DIRECTORY)) {
+  mkdirSync(DIRECTORY);
+}
+
 import {
   cloneRepository,
   updateRepository,

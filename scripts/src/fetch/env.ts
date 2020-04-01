@@ -1,8 +1,6 @@
 /**
  * Command-line argument parsing
  */
-
-import { existsSync, rmdirSync, mkdirSync } from 'fs';
 import * as path from 'path';
 
 const DEFAULT_COUNTRY = 'any';
@@ -68,18 +66,5 @@ const DATA_PATH = path.resolve(
  * THe URL of the data repository.
  */
 const REPOSITORY_URL = 'https://github.com/CSSEGISandData/COVID-19.git';
-
-if (existsSync(DIRECTORY) && !existsSync(path.resolve(DIRECTORY, '.git'))) {
-  /**
-   * Git doesn't allow cloning if the path you're trying to clone to already exists. This check below,
-   * and the next one, determine whether:
-   *  a) The repository is alreay cloned locally
-   *  b) The directory exists, but is empty.
-   */
-
-  rmdirSync(DIRECTORY);
-} else if (!existsSync(DIRECTORY)) {
-  mkdirSync(DIRECTORY);
-}
 
 export { COUNTRY, STATE, DATA_PATH, DIRECTORY, REPOSITORY_URL };

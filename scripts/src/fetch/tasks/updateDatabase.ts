@@ -1,6 +1,8 @@
-import { EntryModel, Entry } from '../../../models/Entry';
-import { COUNTRY, STATE } from '../env';
 import mongoose from 'mongoose';
+
+import { Entry, EntryModel } from '@snepalysis/shared';
+
+import { COUNTRY, STATE } from '../env';
 
 /**
  * Read entries from the database, find the difference between entries.

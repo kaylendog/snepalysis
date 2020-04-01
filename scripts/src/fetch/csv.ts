@@ -2,7 +2,7 @@
  * Utils relating to the handling of CSV data.
  */
 
-import { Entry } from '../../models/Entry';
+import { Entry } from '@snepalysis/shared/src/models/Entry';
 import { COUNTRY, STATE } from './env';
 
 /**
