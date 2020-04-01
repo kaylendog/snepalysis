@@ -15,11 +15,14 @@ type EntryDocument = Entry & Document;
 /**
  * MongoDB object schema.
  */
-const EntrySchema = new Schema({
-  lat: Number,
-  long: Number,
-  country: String,
-  state: String,
-});
+const EntrySchema = new Schema(
+  {
+    lat: Number,
+    long: Number,
+    country: String,
+    state: String,
+  },
+  { versionKey: false }
+);
 
 export const EntryModel = model<EntryDocument>('Entry', EntrySchema);

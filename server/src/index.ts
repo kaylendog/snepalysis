@@ -1,6 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import morgan from 'morgan';
+import cors from 'cors';
 
 import { log, EntryModel } from '@snepalysis/shared';
 
@@ -19,13 +20,15 @@ import { log, EntryModel } from '@snepalysis/shared';
   log.success('Connected to Mongo.');
 
   // Create express app
-  const app = express().use(
-    morgan('dev', {
-      stream: {
-        write: (d): void => log.verbose(d.replace('\n', '')),
-      },
-    })
-  );
+  const app = express()
+    .use(
+      morgan('dev', {
+        stream: {
+          write: (d): void => log.verbose(d.replace('\n', '')),
+        },
+      })
+    )
+    .use(cors());
 
   // Status endpoint
   app.get('/status', (req, res) => {
@@ -38,7 +41,7 @@ import { log, EntryModel } from '@snepalysis/shared';
     const page = req.query.page;
 
     if (!page) {
-      const count = await EntryModel.find({}).count();
+      const count = await EntryModel.find({}).countDocuments();
       return res.json({ pages: Math.ceil(count / 500), count });
     }
 
@@ -50,7 +53,17 @@ import { log, EntryModel } from '@snepalysis/shared';
       .skip((page - 1) * 500)
       .limit(500);
 
-    return res.json(docs.map((v) => v.toJSON()));
+    return res.json(
+      docs.map((v) => {
+        return {
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [v.long, v.lat],
+          },
+        };
+      })
+    );
   });
 
   // Send 404 on endpoints that don't exist.
@@ -58,6 +71,6 @@ import { log, EntryModel } from '@snepalysis/shared';
     res.status(404).json({ code: 0, msg: 'Not found.' })
   );
 
-  app.listen(3000);
-  log.done('Listening on port 3000.');
+  app.listen(8080);
+  log.done('Listening on port 8080.');
 })();
