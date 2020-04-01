@@ -11,6 +11,8 @@ The `fetch` script downloads case-by-case data from the JHU Covid-19 database an
 
 ## Arguments
 
+The script can have a number of arguments passed to it at runtime:
+
 ### Offline Mode, `-c`
 
 Prevents the script from attempting to clone & update the local repository, using the most recent local copy of the repository.
