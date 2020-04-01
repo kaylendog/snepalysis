@@ -9,7 +9,9 @@ import {
 import * as path from 'path';
 import gitP, { SimpleGit } from 'simple-git/promise';
 
-import { RecordParser, RecordType } from '../utils/csv';
+import { RecordType } from '../utils/csv';
+import { Entry, EntryModel } from '../models/Entry';
+import mongoose from 'mongoose';
 
 /**
  * The directory in which data will be stored and downloaded to.
@@ -25,17 +27,21 @@ const DATA_PATH = path.resolve(
 );
 
 if (process.argv.includes('-f')) {
-  console.log('warn: -f argument specified - will update');
+  console.log('warn: -f argument specified - will update database');
 }
 
-/**
- * Git doesn't allow cloning if the path you're trying to clone to already exists. This check below,
- * and the next one, determine whether:
- *  a) The repository is alreay cloned locally
- *  b) The directory exists, but is empty.
- */
+if (process.argv.includes('-o')) {
+  console.log('warn: -o argument specified - will not attempt to pull updates');
+}
 
 if (existsSync(DIRECTORY) && !existsSync(path.resolve(DIRECTORY, '.git'))) {
+  /**
+   * Git doesn't allow cloning if the path you're trying to clone to already exists. This check below,
+   * and the next one, determine whether:
+   *  a) The repository is alreay cloned locally
+   *  b) The directory exists, but is empty.
+   */
+
   rmdirSync(DIRECTORY);
 } else if (!existsSync(DIRECTORY)) {
   mkdirSync(DIRECTORY);
@@ -57,23 +63,66 @@ const git: SimpleGit = gitP(DIRECTORY).outputHandler(
 );
 
 /**
+ * Command-line argument parsing
+ */
+
+const DEFAULT_COUNTRY = 'any';
+const DEFAULT_STATE = 'any';
+
+let country = DEFAULT_COUNTRY;
+let state = DEFAULT_STATE;
+
+const countryIndex = process.argv.indexOf('-c');
+const stateIndex = process.argv.indexOf('-s');
+
+if (countryIndex != -1) {
+  country = process.argv[countryIndex + 1];
+}
+
+if (stateIndex != -1) {
+  state = process.argv[stateIndex + 1];
+}
+
+/**
  * Valid record types currently used.
  */
-const RECORD_TYPES = RecordType.fromHeaders([
-  //'Province/State, Country/Region, Last Update, Confirmed, Deaths, Recovered',
-  'Province/State, Country/Region, Last Update, Confirmed, Deaths, Recovered, Latitude, Longitude',
-  'FIPS, Admin2, Province_State, Country_Region, Last_Update, Lat, Long_, Confirmed, Deaths, Recovered, Active, Combined_Key',
-]);
+const RECORD_TYPES = [
+  // Old header types
+  RecordType.from(
+    'Province/State, Country/Region, Last Update, Confirmed, Deaths, Recovered, Latitude, Longitude'
+  )
+    .columns({
+      country: 'Country/Region',
+      lat: 'Latitude',
+      long: 'Longitude',
+      state: 'Province/State',
+    })
+    .filter('country', (v) => (country === 'any' ? true : v === country))
+    .filter('state', (v) => (state === 'any' ? true : v === state)),
+  // New header types
+  RecordType.from(
+    'FIPS, Admin2, Province_State, Country_Region, Last_Update, Lat, Long_, Confirmed, Deaths, Recovered, Active, Combined_Key'
+  )
+    .columns({
+      country: 'Country_Region',
+      lat: 'Lat',
+      long: 'Long_',
+      state: 'Province_State',
+    })
+    .filter('country', (v) => (country === 'any' ? true : v === country))
+    .filter('state', (v) => (state === 'any' ? true : v === state)),
+];
 
 /**
  * Clone the remote repository.
  */
 const cloneRepository = async (): Promise<void> => {
   if (existsSync(path.resolve(DIRECTORY, './.git'))) {
-    return console.log('info: Skipping cloning repository - already exists.');
+    // Don't try and reclone the repo if it already exists locally.
+    return;
   }
 
-  console.log('info: Cloning repository');
+  console.log('info: Cloning repository...');
 
   await git.clone(REPOSITORY_URL, DIRECTORY);
   await git.status();
@@ -83,7 +132,7 @@ const cloneRepository = async (): Promise<void> => {
  * Pulls any updates made to the repository on the remote to the local.
  */
 const updateRepository = async (): Promise<boolean> => {
-  console.log('info: Checking for updates');
+  console.log('info: Checking for updates...');
   const stats = await git.pull('origin', 'master', ['-f']);
   if (stats.summary.changes == 0) {
     return false;
@@ -94,10 +143,10 @@ const updateRepository = async (): Promise<boolean> => {
 /**
  * Read the .csv files in the repository.
  */
-const readRepository = async (): Promise<void> => {
+const readRepository = async (): Promise<Entry[]> => {
   const files = readdirSync(DATA_PATH);
+  const entries: Entry[] = [];
 
-  let accumulator = 0;
   let skippedFiles = 0;
 
   // Iterate over each file, reading it and converting it to something JS can work with
@@ -112,9 +161,6 @@ const readRepository = async (): Promise<void> => {
     const parser = createReadStream(path.resolve(DATA_PATH, file)).pipe(
       parse()
     );
-
-    // Our in-house record parser
-    const recordParser = new RecordParser();
 
     /**
      * Current row number.
@@ -137,24 +183,71 @@ const readRepository = async (): Promise<void> => {
         }
       }
 
-      recordParser.using(type).parse(record);
+      const entry = type.parse(record);
+
+      if (entry) {
+        entries.push(entry);
+      }
       row++;
     }
-
-    accumulator += recordParser.recordCount;
   });
 
   await Promise.all(workers);
 
   console.log(`warn: Skipped ${skippedFiles} files with invalid column names.`);
-  console.log(`info: Done - got ${accumulator} records.`);
+  console.log(`info: Done - repository has ${entries.length} records.`);
+
+  return entries;
+};
+
+/**
+ * Read entries from the database, find the difference between entries.
+ * @param entries
+ */
+const updateDatabase = async (entries: Entry[]): Promise<void> => {
+  try {
+    await mongoose.connect('mongodb://localhost:27017/snepalysis', {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+  } catch (err) {
+    console.error('error: Failed to connect to MongoDB -', err.message);
+    return;
+  }
+
+  console.log('info: Fetching existing records...');
+
+  const oldEntryMap = new Map<string, Entry>();
+  const oldEntries = await EntryModel.find({ country, state });
+
+  oldEntries.forEach((v) =>
+    oldEntryMap.set(`${v.country}:${v.lat}:${v.long}:${v.state}`, v)
+  );
+
+  const newEntries = [];
+
+  for (const v of entries) {
+    if (!oldEntryMap.has(`${v.country}:${v.lat}:${v.long}:${v.state}`)) {
+      newEntries.push(v);
+    }
+  }
+
+  console.log(`info: Found ${newEntries.length} new entries.`);
 };
 
 (async (): Promise<void> => {
   await cloneRepository();
-  const shouldUpdate = await updateRepository();
-  if (shouldUpdate || process.argv.includes('-f')) {
-    await readRepository();
+
+  let shouldUpdate = false;
+
+  if (!process.argv.includes('-f')) {
+    shouldUpdate = await updateRepository();
   }
-  console.log('info: Not updating database - repo is fine');
+
+  if (!shouldUpdate && !process.argv.includes('-f')) {
+    return console.log('info: Not updating database - repo is fine.');
+  }
+
+  const entries = await readRepository();
+  await updateDatabase(entries);
 })();

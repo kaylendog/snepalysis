@@ -2,49 +2,112 @@
  * Utils relating to the handling of CSV data.
  */
 
+import { Entry } from '../models/Entry';
+
 /**
  * A class for dealing with how records should be parsed, given the columns of the table.
  */
 export class RecordType {
-  public columns = this.header.split(',');
+  private _columns = this.header.split(', ');
+
+  /**
+   * An object mapping column index to entry field.
+   */
+  private _indexMap: {
+    [K in keyof Entry]: number;
+  } = { country: -1, lat: -1, long: -1, state: -1 };
+
+  /**
+   * An object containing arrays of filters for each entry key.
+   */
+  private _filters: {
+    [K in keyof Entry]: ((value: string) => boolean)[];
+  } = { country: [], lat: [], long: [], state: [] };
+
   constructor(readonly header: string) {}
 
   /**
-   * Create record types from table headers.
-   * @param headers
+   * Create a record type from a table header.
    */
-  static fromHeaders(headers: string[]): RecordType[] {
-    return headers.map((v) => new RecordType(v));
+  static from(header: string): RecordType {
+    return new RecordType(header);
   }
-}
-
-/**
- * A class for dealing with the parsing of CSV records.
- */
-export class RecordParser {
-  /**
-   * The record type to use when parsing.
-   */
-  public recordType: RecordType;
-
-  public recordCount = 0;
 
   /**
-   * Parse using the given record type.
+   * Map a column to entry property.
+   * @param key
+   * @param mapToColumn
    */
-  public using(type: RecordType): this {
-    this.recordType = type;
+  public column(key: keyof Entry, mapToColumn: string): this {
+    const index = this._columns.indexOf(mapToColumn);
+
+    if (index == -1) {
+      throw Error(`Invalid column name '${mapToColumn}'`);
+    }
+
+    this._indexMap[key] = index;
     return this;
+  }
+
+  /**
+   * Map multiple columns
+   * @param entry
+   */
+  public columns(entries: { [K in keyof Entry]: string }): this {
+    for (const key in entries) {
+      this.column(key as keyof Entry, entries[key]);
+    }
+    return this;
+  }
+
+  /**
+   * Filter records by column.
+   * @param columnName
+   * @param filter
+   */
+  public filter(key: keyof Entry, filter: (value: string) => boolean): this {
+    if (!this._filters[key]) {
+      this._filters[key] = [filter];
+    }
+
+    this._filters[key].push(filter);
+    return this;
+  }
+
+  /**
+   * Return the mapped index of an entry key.
+   */
+  public prop(key: keyof Entry): number {
+    return this._indexMap[key];
+  }
+
+  /**
+   * Extract a record parameter.
+   */
+  public extract(key: keyof Entry, record: string[]): string {
+    return record[this.prop(key)];
   }
 
   /**
    * Parse a record.
    * @param record
    */
-  public parse(record: string[]): void {
-    if (record.length !== this.recordType.columns.length) {
-      throw Error('Mismatching column schemas.');
+  parse(record: string[]): Entry | undefined {
+    for (const key in this._filters) {
+      // For each key of the filter object attached to this type,
+      // run the filters and skip records if they return false.
+      for (const filter of this._filters[key as keyof Entry]) {
+        if (!filter(this.extract(key as keyof Entry, record))) {
+          return;
+        }
+      }
     }
-    this.recordCount++;
+
+    return {
+      country: this.extract('country', record),
+      lat: Number(this.extract('lat', record)),
+      long: Number(this.extract('long', record)),
+      state: this.extract('state', record),
+    };
   }
 }

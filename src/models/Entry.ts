@@ -1,16 +1,25 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Schema, model, Document } from 'mongoose';
 
-@Entity()
-export class Entry {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column()
-  firstName: string;
-
-  @Column()
-  lastName: string;
-
-  @Column()
-  age: number;
+/**
+ * A data entry.
+ */
+export interface Entry {
+  lat: number;
+  long: number;
+  country: string;
+  state: string;
 }
+
+type EntryDocument = Entry & Document;
+
+/**
+ * MongoDB object schema.
+ */
+const EntrySchema = new Schema({
+  lat: Number,
+  long: Number,
+  country: String,
+  state: String,
+});
+
+export const EntryModel = model<EntryDocument>('Entry', EntrySchema);
