@@ -15,14 +15,14 @@ The `fetch` script downloads case-by-case data from the JHU Covid-19 database an
 
 Prevents the script from attempting to clone & update the local repository, using the most recent local copy of the repository.
 
-## Force Update, `-f`
+### Force Update, `-f`
 
 Forces the script to attempt to update the database using the repository, even if no changes have been made to the repo.
 
-# Country Filter, `-c <country>`
+### Country Filter, `-c <country>`
 
 Filters for the specified country, skipping any other cases.
 
-# State Filter, `-s <state>`
+### State Filter, `-s <state>`
 
 Filters for the specified state - not necessarily a US one. Will return states from multiple countries.
