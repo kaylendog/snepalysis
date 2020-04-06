@@ -48,6 +48,8 @@ export const readRepository = async (): Promise<Entry[]> => {
         if (!type) {
           return skippedFiles++;
         }
+        row++;
+        continue;
       }
 
       const entry = type.parse(record);

@@ -11,6 +11,7 @@
   "dependencies": {
     "@snepalysis/shared": "^1.0.0",
     "csv-parse": "^4.8.8",
+    "lodash": "^4.17.15",
     "simple-git": "^1.132.0"
   },
   "devDependencies": {

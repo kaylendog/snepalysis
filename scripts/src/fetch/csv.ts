@@ -104,10 +104,19 @@ export class RecordType {
       }
     }
 
+    let latEntry: number = 0;
+    let longEntry: number = 0;
+
+    const extractedLat = Number(this.extract('lat', record));
+    const extractedLong = Number(this.extract('long', record));
+
+    latEntry = Number.isNaN(extractedLat) ? 0 : extractedLat;
+    longEntry = Number.isNaN(extractedLong) ? 0 : extractedLong;
+
     return {
       country: this.extract('country', record),
-      lat: Number(this.extract('lat', record)),
-      long: Number(this.extract('long', record)),
+      lat: latEntry,
+      long: longEntry,
       state: this.extract('state', record),
     };
   }
